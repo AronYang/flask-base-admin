@@ -1,0 +1,11 @@
+*.pyc
+*.pyo
+conf.py
+frontend/node_modules
+__pycache__
+dist/
+false/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+

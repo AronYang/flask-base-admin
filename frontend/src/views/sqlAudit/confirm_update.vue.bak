@@ -1,0 +1,917 @@
+<template>
+  <div>
+    <div class="card">
+      <div class="card-body">
+        <span class="text-muted">工单操作：</span>
+        <el-button type="primary" @click="auditAction('pass')" :disabled="ruleForm.current_action_status==0">通过</el-button>
+        <el-button type="warning" @click="auditAction('back')" :disabled="ruleForm.current_action_status==0">打回</el-button>
+        <!--         <el-button type="danger" @click="auditAction('reject')" :disabled="ruleForm.current_action_status==0">否决</el-button> -->
+        <el-button @click="auditAction('revoke')">撤回</el-button>
+      </div>
+    </div>
+    <div>
+      <el-tabs type="border-card">
+        <el-tab-pane label="工单详情">
+          <el-col :span='24'>
+            <table class="table   table-bordered">
+              <tbody>
+                <tr>
+                  <td class="text-muted">工单名称</td>
+                  <td>{{ruleForm.name}}</td>
+                  <td class="text-muted">申请人</td>
+                  <td>{{ruleForm.submitterName}}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">申请数据库</td>
+                  <td>{{ruleForm.dbname}}</td>
+                  <td class="text-muted">申请原因</td>
+                  <td>{{ruleForm.reason}}</td>
+                </tr>
+                <tr>
+                  <td class='text-muted'>工单状态</td>
+                  <td>
+                    <el-tag type="default" v-if="ruleForm.status==0">待提交</el-tag>
+                    <el-tag type="info" v-if="ruleForm.status==1">待处理</el-tag>
+                    <el-tag type="primary" v-if="ruleForm.status==2">处理中</el-tag>
+                    <el-tag type="success" v-if="ruleForm.status==3">已结束</el-tag>
+                    <el-tag type="danger" v-if="ruleForm.status==4">被打回</el-tag>
+                    <el-tag type="danger" v-if="ruleForm.status==5">被否决</el-tag>
+                  </td>
+                  <td class="text-muted">申请时间</td>
+                  <td>{{ruleForm.create_time}}</td>
+                </tr>
+                <tr v-if="ruleForm.svntag==1">
+                  <td class="text-muted">svn目录</td>
+                  <td>{{ruleForm.svndirname}}</td>
+                  <td class="text-muted">svn版本</td>
+                  <td>{{ruleForm.svn_version}}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">所属流程</td>
+                  <td>{{ruleForm.flow.name}}</td>
+                  <td class="text-muted">计划上线时间</td>
+                  <td>{{ruleForm.online_time}}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">步骤列表</td>
+                  <td colspan=3>
+                    <template>
+                      <el-steps :space="80" direction="vertical" :active="current_step" style='margin-top:15px'>
+                        <el-step :title="n.name" :key="n.id" :description="'描述:'+n.description + ' 审核人:'+ n.operatorNames" v-for="n in ruleForm.nodes"></el-step>
+                      </el-steps>
+                    </template>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-muted">操作记录</td>
+                  <td colspan=3>
+                    <div v-for="record in ruleForm.records">
+                      <span class="text-muted">&nbsp&nbsp节点：</span> {{record.nodeName}}
+                      <span class="text-muted">&nbsp&nbsp审批人：</span>{{record.operatorName}}
+                      <span class="text-muted">&nbsp&nbsp操作：
+                            <span v-if="record.node_action == 1" class="text-success">通过</span>
+                      <span v-if="record.node_action == 2" class="text-danger">退回</span>
+                      <span v-if="record.node_action == 3" class="text-danger">否决</span>
+                      <span v-if="record.node_action == 4" class="text-warning">撤回</span>
+                      <span v-if="record.node_action == 5" class="text-info">执行</span>
+                      </span>
+                      <span class="text-muted">&nbsp&nbsp时间：</span>
+                      <span style="color:gray">{{record.update_time}}</span>
+                      <span class="text-muted">&nbsp&nbsp说明：</span>
+                      <span>{{record.node_note}}</span>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class='text-muted'>SQL来源</td>
+                  <td colspan=3>
+                    <span v-if="ruleForm.svntag == 1">SVN获取</span>
+                    <span v-else>手动输入</span>
+                  </td>
+                </tr>
+                <tr v-if="ruleForm.svntag != 1">
+                  <td class='text-muted'>SQL内容</td>
+                  <td colspan=3>
+                    <div class="text-left">
+                      <button class="btn btn-link" v-clipboard:copy="ruleForm.sqlContent" v-clipboard:success="copySucess">复制SQL文本</button>
+                      <button class='btn btn-link' @click="showSqlContent = 0" v-if="showSqlContent==1">隐藏SQL内容</button>
+                      <button class='btn btn-link' @click="showSqlContent = 1" v-if="showSqlContent==0">显示SQL内容</button>
+                    </div>
+                    <div v-if="showSqlContent ==  1">
+                      <codemirror v-model="ruleForm.sqlContent" :options="editorOption"></codemirror>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </el-col>
+        </el-tab-pane>
+        <el-tab-pane label="SQL执行">
+          <!--v-if= "ruleForm.user_belong_current_node_status == 1 && ruleForm.exec_tag == 1" -->
+          <el-col style="margin-top:15px">
+            <!-- <div style="margin-left:15px"> -->
+            <!--               <el-cascader expand-trigger="hover" :options="ruleForm.instances" :props="props" v-model="cluster_id"  filterable placeholder="可搜索数据库" style="width:30%">
+              </el-cascader> -->
+            <el-row>
+              <data-tables :data="ruleForm.svnfilelist" :actions-def="actionsDef" tablePropsborder=1 :pagination-def="paginationDef" @selection-change="handleSqlExecSelectionChange">
+                <el-table-column type="selection" width="55" :selectable='checkbox_valid'>
+                </el-table-column>
+                <el-table-column sortable show-overflow-tooltip prop="file" label="文件名">
+                  <template scope="scope">
+                    <el-button type="text" size="small" @click="showsqlFileContent(scope.row.file);svnSqlFilename = scope.row.file">{{scope.row.file}}</el-button>
+                  </template>
+
+                </el-table-column>
+                <el-table-column sortable prop="type" label="类型">
+                  <template scope="scope">
+                    <el-tag :type="scope.row.type_length>=2?'danger':'primary' ">{{scope.row.type}}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column sortable prop="database" label="所属数据库">
+                </el-table-column>
+                <el-table-column prop="id" label="操作">
+                  <template scope="scope">
+<!--                     <el-button type="text" size="small" @click="showsqlFileContent(scope.row.file);svnSqlFilename = scope.row.file">查看</el-button> -->
+                    <!-- <el-button type="text" size="small">历史</el-button> -->
+                    <el-button type="text" size="small" @click="showModalexec=true">执行</el-button>
+                  </template>
+                </el-table-column>
+              </data-tables>
+
+
+              <!-- 查看sql文件内容的详情。  -->
+              <el-dialog :title="'文件内容：' + svnSqlFilename" :visible.sync="showModalSvnSqlContent" width="70%">
+                <span>
+            <el-row>
+                <div v-if="svnSqlContent !=  ''">
+                  <codemirror v-model="svnSqlContent" :options="editorOption"></codemirror>
+                </div>
+                <div v-if="showSqlContent ==  1">
+                  <codemirror v-model="ruleForm.sqlContent" :options="editorOption"></codemirror>
+                </div>              
+            </el-row>
+              </span>
+                <span slot="footer" class="dialog-footer">
+                    <el-button @click="showModalSvnSqlContent = false ">关闭</el-button>
+                </span>
+              </el-dialog>
+
+
+
+
+              <!-- 执行单个SQL页面的modal。  -->
+              <el-dialog :title="'文件内容：'" :visible.sync="showModalexec" width="70%">
+                <span>
+
+                <div class="text-muted">要检查和执行的环境：</div>
+                <el-select v-model="cluster_id" filterable placeholder="请选择环境" style="width:100%;margin-bottom:15px" @change="get_env_instances">
+                  <el-option v-for="item in ruleForm.clusters" :key="item.id" :label="item.name" :value="item.id">
+                  </el-option>
+                </el-select>
+
+
+                <div class="text-muted">要检查和执行的实例：</div>
+                <el-select v-model="instance_id" filterable placeholder="请选择实例" style="width:100%;margin-bottom:15px" @change="singe_exec_instance_set" >
+                  <el-option v-for="instance in instance_list" :key="instance.id" :label="instance.ip + ':' + instance.port" :value="instance.id">
+                  </el-option>
+                </el-select>
+
+                <el-row style="margin-top:20px">
+                  <div class="text-muted">操作命令：</div>
+                  <el-tooltip class="item" effect="dark" content="不会真正执行，基于inception检测" placement="top">
+                    <el-button type="default" @click="checksql" :loading="check_loading_status" :disabled="cluster_id == ''">检测</el-button>
+                  </el-tooltip>
+<!--                   <el-tooltip class="item" effect="dark" content="执行遇到错误时退出" placement="top">
+                    <el-button type="danger" @click="execute('execute')" :loading="execute_loading_status" :disabled="cluster_id == ''">执行</el-button>
+                  </el-tooltip> -->
+                  <el-tooltip class="item" effect="dark" content="执行遇到错误时，接着执行后续的sql" placement="top">
+                    <el-button type="danger" @click="execute('force')" :loading="force_loading_status" :disabled="cluster_id == ''">强制执行</el-button>
+                  </el-tooltip>
+                </el-row>
+
+                </span>
+
+                <span slot="footer" class="dialog-footer">
+                   <el-button @click="showModalexec = false ">关闭</el-button>
+                </span>
+              </el-dialog>
+
+
+
+
+              <!-- 单个执行页面的modal。  -->
+              <el-dialog :title="'文件内容：'" :visible.sync="showModalBatchExecStatus" width="70%">
+                <span>
+                <div class="text-muted">要检查和执行的环境：</div>
+                <el-select v-model="cluster_id" filterable placeholder="请选择环境" style="width:100%;margin-bottom:15px" @change="get_env_instances">
+                  <el-option v-for="item in ruleForm.clusters" :key="item.id" :label="item.name" :value="item.id">
+                  </el-option>
+                </el-select>
+                <el-row>
+                  <div class="text-muted">执行关系：</div>
+                  <table class="table  table-bordered  table-condensed">
+                    <tbody>
+                      <tr style="background-color:rgb(238,241,246)">
+                        <td>实例</td>
+                        <td>SQL</td>
+                      </tr>
+                    </tbody>
+                    <template v-for="instance in instance_list">
+                      <tr>
+                        <td>
+                          <el-tooltip class="item" effect="dark" :content="'该实例包含库：'+instance.dbNames" placement="top">
+                            <span>{{instance.ip}}:{{instance.port}}</span>
+                          </el-tooltip>
+                        </td>
+                        <td><span v-for="file in instance.sqlFileList">{{file}} &nbsp &nbsp </span></td>
+                      </tr>
+                    </template>
+                  </table>
+                </el-row>
+                <el-row>
+                  <div class="text-muted">执行次序：</div>
+                  <span v-for="(sql,index) in SqlExecSelectionVals">
+
+                      <span style="color:red">{{index + 1}}</span> .&nbsp
+                  <el-tooltip class="item" effect="dark" content="该文件未找到对应实例！" placement="top">
+                    <span style="color:red" v-if="found_db_sqlfiles.indexOf(sql.file)==-1">{{sql.file}}</span>
+                  </el-tooltip>
+                  <span v-if="found_db_sqlfiles.indexOf(sql.file)!=-1">{{sql.file}}</span> &nbsp&nbsp
+                  </span>
+                </el-row>
+                <el-row style="margin-top:20px">
+                  <div class="text-muted">操作命令：</div>
+                  <el-tooltip class="item" effect="dark" content="不会真正执行，基于inception检测" placement="top">
+                    <el-button type="default" @click="checksql" :loading="check_loading_status" :disabled="cluster_id == ''">检测</el-button>
+                  </el-tooltip>
+<!--                   <el-tooltip class="item" effect="dark" content="执行遇到错误时退出" placement="top">
+                    <el-button type="danger" @click="execute('execute')" :loading="execute_loading_status" :disabled="cluster_id == ''">执行</el-button>
+                  </el-tooltip> -->
+                  <el-tooltip class="item" effect="dark" content="执行遇到错误时，接着执行后续的sql" placement="top">
+                    <el-button type="danger" @click="execute('force')" :loading="force_loading_status" :disabled="cluster_id == ''">强制执行</el-button>
+                  </el-tooltip>
+                </el-row>
+
+                </span>
+
+                <span slot="footer" class="dialog-footer">
+                   <el-button @click="showModalBatchExecStatus = false ">关闭</el-button>
+                </span>
+              </el-dialog>
+
+
+
+
+
+<!-- 
+              <el-col :span="6">
+                <div class="text-muted">SQL内容来源：
+                  <span v-if="ruleForm.svntag == 1">(SVN|目录:{{ruleForm.svndirname}}&nbsp版本:{{ruleForm.svn_version}})</span>
+                  <span v-else>(默认{{ruleForm.dbname}})</span>
+                </div>
+                <div style="margin:15px;" v-if="ruleForm.svnfilelist == '' &&  ruleForm.svntag == 1 ">svn未发现sql文件</div>
+                <div v-if=" ruleForm.svntag != 1"> {{ruleForm.dbname}}
+                  <button class='btn btn-link' @click="showSqlContent = 0" v-if="showSqlContent==1">关闭 </button>
+                  <button class='btn btn-link' @click="showSqlContent = 1" v-if="showSqlContent==0">查看</button>
+                </div>
+                <div style="margin:10px 0px 0px 15px" v-if="ruleForm.svnfilelist != '' && ruleForm.svntag == 1 ">
+                  <template>
+                    <el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange">全选</el-checkbox>
+                    <el-checkbox-group v-model="sqlFileList" @change="handleCheckedCitiesChange">
+                      <template v-for="file in ruleForm.svnfilelist">
+                        <span v-if="exec_file_in_cluster.indexOf(file)!=-1">
+                          <el-checkbox :label="file" style="color:gray"> </el-checkbox> 
+                          <el-button type="text" @click="showsqlFileContent(file);svnSqlFilename=file">查看</el-button>&nbsp&nbsp
+                        </span>
+                        <span v-if="exec_file_in_cluster.indexOf(file)==-1">
+                                <el-checkbox :label="file" style="color:green"> </el-checkbox>
+                            <el-button type="text" @click="showsqlFileContent(file);svnSqlFilename=file">查看</el-button>
+                        </span>
+                        <br>
+                      </template>
+                    </el-checkbox-group>
+                    <span class="text-muted">注：绿色为未执行过的文件</span>
+                  </template>
+                </div>
+              </el-col> -->
+            </el-row>
+            <el-row style="margin-top:15px">
+            </el-row>
+          </el-col>
+          <el-col>
+            <template>
+              <el-tabs v-model="execute_tab" type="card" style="margin-top:15px">
+                <el-tab-pane label="检查结果" name="check">
+                  <el-col style="margin-top:15px">
+                    <div class="text-muted">SQL检查结果：
+                      <el-button type="text" @click="checkTables = []">清空</el-button>
+                    </div>
+                    <div style="margin-left:15px">
+                      <template v-for="check in checkTables">
+                        <h6 style="margin-top:15px">{{check.instance}}:{{check.filename}}</h6>
+                        <div v-if="check.status == 0 " class="text-danger">{{check.data}}</div>
+                        <el-table :data="check.data" v-if="check.data != '' && check.status == 1">
+                          <el-table-column prop="SQL" label="SQL" sortable>
+                            <template scope="scope">
+                              <el-tooltip class="item" effect="dark" :content="scope.row.SQL" placement="top-start">
+                                <div style="max-height:50px;overflow:hidden" v-text="scope.row.SQL">
+                                </div>
+                              </el-tooltip>
+                            </template>
+                          </el-table-column>
+                          <el-table-column sortable prop="execute_time" label="执行时间" width="150">
+                          </el-table-column>
+                          <el-table-column sortable prop="Affected_rows" label="影响行数" width="150">
+                          </el-table-column>
+                          <el-table-column sortable prop="errlevel" label="错误" width="100">
+                            <template scope="scope">
+                              <el-tag type="warning" v-if="scope.row.errlevel==1">警告</el-tag>
+                              <el-tag type="danger" v-if="scope.row.errlevel==2">严重</el-tag>
+                              <el-tag type="success" v-if="scope.row.errlevel==0">正常</el-tag>
+                            </template>
+                          </el-table-column>
+                          <el-table-column sortable prop="errormessage" label="信息">
+                            <template scope="scope">
+                              <el-tooltip class="item" effect="dark" :content="scope.row.errormessage" placement="top-start">
+                                <div style="max-height:50px;overflow:hidden" v-text="scope.row.errormessage">
+                                </div>
+                              </el-tooltip>
+                            </template>
+                          </el-table-column>
+                        </el-table>
+                      </template>
+                      <!--                     <template v-for="(checkTable,k) in checkDict">
+                      <h6 style="margin-top:15px">{{k}}</h6>
+                      <el-table :data="checkTable" v-if="checkTable != '' ">
+                        <el-table-column prop="SQL" label="SQL" sortable >
+                          <template scope="scope">
+                            <el-tooltip class="item" effect="dark" :content="scope.row.SQL" placement="top-start">
+                              <div style="max-height:50px;overflow:hidden" v-text="scope.row.SQL">
+                            </div>
+                            </el-tooltip>
+                          </template>
+
+                        </el-table-column>
+                        <el-table-column sortable prop="execute_time" label="执行时间" width="150">
+                        </el-table-column>
+                        <el-table-column sortable prop="Affected_rows" label="影响行数" width="150">
+                        </el-table-column>
+                        <el-table-column sortable prop="errlevel" label="错误" width="100">
+                          <template scope="scope">
+                            <el-tag type="warning" v-if="scope.row.errlevel==1">警告</el-tag>
+                            <el-tag type="danger" v-if="scope.row.errlevel==2">严重</el-tag>
+                            <el-tag type="success" v-if="scope.row.errlevel==0">正常</el-tag>
+                          </template>
+                        </el-table-column>
+                        <el-table-column sortable prop="errormessage" label="信息">
+                          <template scope="scope">
+                            <el-tooltip class="item" effect="dark" :content="scope.row.errormessage" placement="top-start">
+                              <div style="max-height:50px;overflow:hidden" v-text="scope.row.errormessage">
+                            </div>
+                            </el-tooltip>
+                          </template>
+                        </el-table-column>
+
+                      </el-table>
+                    </template> -->
+                    </div>
+                  </el-col>
+                </el-tab-pane>
+                <el-tab-pane label="执行结果" name="execute">
+                  <el-col style="margin-top:15px;">
+                    <div class="text-muted">历史记录：</div>
+                    <div style="margin-left:15px" v-for="passrecord in ruleForm.passrecords">
+                      <!-- {{passrecord.ip}}:{{passrecord.port}}/{{passrecord.dbname}} -->
+                      {{passrecord.clusterName}}({{passrecord.exec_filename}}&nbsp&nbsp<small class="text-muted">{{passrecord.create_time}}&nbsp{{passrecord.userName}}</small>) <a href="javascript:;" @click="record_id=passrecord.record_id;get_exec_info(passrecord.record_id)">查看</a>
+                    </div>
+                  </el-col>
+                  <el-col style="margin-top:15px">
+                    <div class="text-muted">SQL执行结果：</div>
+                    <div style="margin-left:15px">
+                      <el-table :data="execTable" v-if="execTable != '' ">
+                        <el-table-column prop="SQL" label="SQL" sortable>
+                          <template scope="scope">
+                            <el-tooltip class="item" effect="dark" :content="scope.row.SQL" placement="top-start">
+                              <div style="max-height:50px;overflow:hidden" v-text="scope.row.SQL">
+                              </div>
+                            </el-tooltip>
+                          </template>
+                        </el-table-column>
+                        <el-table-column sortable prop="execute_time" label="执行时间" width="150">
+                        </el-table-column>
+                        <el-table-column sortable prop="Affected_rows" label="影响行数" width="150">
+                        </el-table-column>
+                        <el-table-column sortable prop="errlevel" label="状态" width="100">
+                          <template scope="scope">
+                            <el-tag type="warning" v-if="scope.row.errlevel==1">警告</el-tag>
+                            <el-tag type="danger" v-if="scope.row.errlevel==2">失败</el-tag>
+                            <el-tag type="success" v-if="scope.row.errlevel==0">成功</el-tag>
+                          </template>
+                        </el-table-column>
+                        <el-table-column sortable prop="errormessage" label="信息">
+                          <template scope="scope">
+                            <el-tooltip class="item" effect="dark" :content="scope.row.errormessage" placement="top-start">
+                              <div style="max-height:50px;overflow:hidden" v-text="scope.row.errormessage">
+                              </div>
+                            </el-tooltip>
+                          </template>
+                        </el-table-column>
+                        <!--                           <el-table-column sortable prop="stage" label="动作">
+                          </el-table-column> -->
+                      </el-table>
+                    </div>
+                  </el-col>
+                </el-tab-pane>
+              </el-tabs>
+            </template>
+          </el-col>
+        </el-tab-pane>
+      </el-tabs>
+    </div>
+  </div>
+  <!-- </div> -->
+</template>
+<script>
+import { FlowListApiUrl, ConfirmActionApiUrl, ConfirmListApiUrl, ConfirmExecApiUrl, ConfirmListPage, ConfirmGetSvnSqlContent, InstanceListApiUrl, ConfirmCheckApiUrl } from '@/http/url'
+export default {
+  name: 'confirmUpdate',
+  data() {
+    return {
+      execute_tab: 'execute', //有check,execute两个选项
+      props: {
+        value: 'id',
+        children: 'dbs',
+        label: 'name',
+      },
+      form: {},
+      cluster_id: '', //选中的集群
+      instance_id:'',//选中的实例 
+      dbs: [],
+      ruleForm: {
+        name: '',
+      },
+      flow_list: [],
+      editorOption: {
+        tabSize: 4,
+        height: 1000,
+        styleActiveLine: true,
+        lineNumbers: true,
+        line: true,
+        mode: 'text/x-mysql',
+        theme: 'solarized light',
+        lineWrapping: true,
+        readOnly: true,
+      },
+      showSqlContent: 0, //控制sql内容是否显示
+      // instanceTree:[],
+      execTable: [], //存放拉出来的命令执行结果的数据
+      checkTable: [], // 存放sql语法检测的结果
+      checkTables: [],
+      checkDict: {}, //存放sql语法检测的结果  
+      execute_loading_status: false,
+      check_loading_status: false,
+      force_loading_status: false,
+      record_id: '',
+      sqlFileList: [], //选中的要执行的sql文件
+      checkAll: true,
+      isIndeterminate: true,
+      svnSqlContent: '', //查看从svn里拉出来的文件内容  
+      svnSqlFilename: '',
+      instance_list: [],
+      exec_file_in_cluster: [],
+      found_db_sqlfiles: [],
+      actionsDef: {
+        colProps: {
+          span: 19
+        },
+        def: [{
+          name: '批量操作',
+          buttonProps: { type: 'danger' },
+          handler: () => {
+            if (this.SqlExecSelectionVals.length == 0){
+              this.$message.error("未选择要执行的sql!")
+              return
+            }
+            this.showModalBatchExecStatus = true
+            this.auto_relation_cluster_and_sqlfile()
+          }
+        }]
+      },
+      showModalSvnSqlContent: false,
+      showModalexec:false,
+      showModalBatchExecStatus:false,
+      paginationDef: {
+        show: false
+      },
+      SqlExecSelectionVals:[],
+    }
+  },
+  computed: {
+    current_step() {
+      var num = 0
+      for (var n in this.ruleForm.nodes) {
+        var node = this.ruleForm.nodes[n]
+        if (node.id == this.ruleForm.node_id) {
+          console.log('n.', n)
+          var n = Number(n)
+          num = n + 1
+          break
+        }
+      }
+      console.log(num, typeof(num))
+      return num
+    }
+  },
+  filters: {
+    filter_result(result) {
+      return result.replace('((', '(').replace('),', ')<br>')
+    }
+  },
+  methods: {
+    get_flows() {
+      //获取流程列表
+      var self = this
+      this.$http.get(FlowListApiUrl).then((response) => {
+        self.flow_list = response.data.result
+      })
+    },
+    get_actionname(action) {
+      //返回动作对应的名称
+      if (action == 'pass') {
+        return '通过'
+      } else if (action == 'revoke') {
+        return '撤回'
+      } else if (action == 'back') {
+        return '打回'
+      } else if (action == 'reject') {
+        return '否决'
+      }
+    },
+    auditAction(action) {
+      //执行审核动作
+      var id = this.$route.params.id
+      var action_name = this.get_actionname(action)
+
+      var data = {
+        id: id,
+        action: action,
+        reason: '',
+      }
+      var self = this
+      this.$prompt('' + action_name + '理由： ', '[审核' + action_name + ']操作', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+      }).then(({ value }) => {
+        data.reason = value
+        self.$http.put(ConfirmActionApiUrl, data).then((response) => {
+          self.$message(response.data.msg)
+          if (response.data.status == 1) {
+            self.$router.push(ConfirmListPage)
+          }
+        })
+      }).catch(() => {});
+    },
+
+    get_confirm_info() {
+      //获取单个工单的详细信息
+      var id = this.$route.params.id
+      var self = this
+      this.$http.get(ConfirmListApiUrl + '/' + id).then((response) => {
+        self.ruleForm = response.data.result
+      })
+    },
+    copySucess() {
+      this.$message('SQL内容复制成功！')
+    },
+    get_exec_info(value) {
+      var self = this
+      var record_id = this.record_id
+      if (value != record_id) {
+        return
+      }
+      // this.execTable = []
+      this.$http.get(ConfirmExecApiUrl + '?record_id=' + record_id).then((response) => {
+        if (response.data.status == 1) {
+          self.execTable = response.data.result
+        }
+        var circle_tag = 1
+        var exec_list = response.data.result
+
+        //如果最后一个sql执行命令成功，则完成
+        if (exec_list.length >= 1) {
+          var last_exec = exec_list[exec_list.length - 1]
+          if (last_exec.status == 1) {
+            circle_tag = 0
+          }
+        }
+        //如果中间有一个命令执行失败，则完成
+        for (var exc in exec_list) {
+          if (exc.status == 0) {
+            circle_tag = 0
+          }
+        }
+        //如果不是在审核页面了，不再循不
+        if (self.$route.path.indexOf('/sqlaudit/confirms/') == -1) {
+          cicle_tag = 0
+        }
+
+        //如果循环标记为1，则循环拉取执行记录  
+        if (circle_tag == 1) {
+          console.log('circle...')
+          setTimeout(function() {
+            self.get_exec_info(value)
+          }, 2000)
+
+        }
+      })
+    },
+    checksql() {
+      //检测sql语法
+      var submit_id = this.$route.params.id
+      var self = this
+      this.execute_tab = 'check'
+      this.checkTables = []
+      this.checkDict = {}
+      this.check_loading_status = true
+      //如果是svntag=1,把svn里的文件提上去  
+      var d = {
+        cluster_id: this.cluster_id,
+        submit_id: submit_id,
+        instance_list: this.instance_list,
+      }
+      this.$http.put(ConfirmCheckApiUrl, d).then((response) => {
+        self.$message(response.data.msg)
+        self.check_loading_status = false
+        self.checkTables = response.data.result
+      })
+    },
+    execute(action) {
+      //执行命令, action包含check, execute
+      var submit_id = this.$route.params.id
+      var self = this
+
+      // if(action=='check'){
+      // this.execute_tab = 'check'
+      // this.checkTable = []
+      // this.checkDict = {}
+      // this.check_loading_status = true
+      // console.log(this.execute_tab)
+
+      // //如果是svntag=1,把svn里的文件提上去  
+      // if (this.ruleForm.svntag == 1){
+      //   for (var n in this.sqlFileList){
+      //     var filename = this.sqlFileList[n]
+      //     var d = {
+      //     cluster_id: this.cluster_id,
+      //     submit_id: submit_id,
+      //     action:action ,
+      //     instance_list:this.instance_list,
+      //     }
+      //     this.$http.put(ConfirmExecApiUrl, d).then((response) => {
+      //       self.$message(response.data.msg)
+      //       self.check_loading_status = false
+      //       if (response.data.status == 1) {
+      //         if(action == 'check') {
+      //           self.checkDict[response.data.result.name]= response.data.result.data
+      //           self.checkDict = Object.assign({}, self.checkDict)
+      //           console.log(self.checkDict)
+      //         }
+      //       }
+      //     })
+      //   }          
+      // } else {
+      //     //如果svntag ==0,就不提交svn里文件名
+      //     var d = {
+      //     cluster_id: this.cluster_id,
+      //     submit_id: submit_id,
+      //     action:action ,
+      //     }     
+      //     console.log(d)
+      //     this.$http.put(ConfirmExecApiUrl, d).then((response) => {
+      //       self.$message(response.data.msg)
+      //       self.check_loading_status = false
+      //       if (response.data.status == 1) {
+      //         if(action == 'check') {
+      //           self.checkDict[response.data.result.name]= response.data.result.data
+      //           self.checkDict = Object.assign({}, self.checkDict)
+      //           console.log(self.checkDict)
+
+      //         }
+      //       }
+      //     })
+      // }
+      // }
+
+
+      // 判断该环境是否执行过  
+      if (action == 'execute' || action == 'force') {
+
+        var d = {
+          cluster_id: this.cluster_id,
+          submit_id: submit_id,
+          action: action,
+          instance_list: this.instance_list,
+        }
+
+        var already_exec_files = []
+
+        for (var i in this.instance_list) {
+          for (var n in this.instance_list[i].sqlFileList) {
+            var will_exec_file = this.instance_list[i].sqlFileList[n]
+
+            for (var n2 in this.ruleForm.passrecords) {
+              var already_exec_filenames = this.ruleForm.passrecords[n2].exec_filenames
+              if (already_exec_filenames.indexOf(will_exec_file) != -1) {
+                if (already_exec_files.indexOf(will_exec_file) == -1) {
+                  already_exec_files.push(will_exec_file)
+                }
+              }
+            }
+          }
+        }
+
+        if (already_exec_files != '') {
+          this.$confirm(already_exec_files.join(', ') + '文件在该环境已经执行过, 是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            this.execute_tab = 'execute'
+            this.execTable = []
+
+            if (action == 'execute') { self.execute_loading_status = true } //button置为加载中
+            if (action == 'force') { self.force_loading_status = true } //button置为加载中
+
+            self.$http.put(ConfirmExecApiUrl, d).then((response) => {
+              self.$message(response.data.msg)
+              // self.execute_loading_status = false
+              if (action == 'execute') { self.execute_loading_status = false } //button置为加载中
+              if (action == 'force') { self.force_loading_status = false } //button置为加载中
+
+              if (response.data.status == 1) {
+
+                if (action == 'execute' || action == 'force') {
+                  // self.execute_loading_status = false //button置为正常状态  
+                  self.execTable = response.data.result
+                  self.get_confirm_info() //重新获取工单数据
+                  self.get_the_cluster_exists_file()
+
+                  self.record_id = response.data.result[0].record_id
+
+                  console.log(response.data.result[response.data.result.length - 1].errlevel, 'err')
+                  if (response.data.result[response.data.result.length - 1].errlevel == null) {
+                    self.get_exec_info(response.data.result[0].record_id) //循环获取数据           
+                  }
+                }
+              }
+            })
+          }).catch(() => {
+            self.force_loading_status = false
+            self.execute_loading_status = false
+            return
+          });
+        } else {
+          this.execute_tab = 'execute'
+          this.execTable = []
+
+          if (action == 'execute') { self.execute_loading_status = true } //button置为加载中
+          if (action == 'force') { self.force_loading_status = true } //button置为加载中
+
+          self.$http.put(ConfirmExecApiUrl, d).then((response) => {
+            self.$message(response.data.msg)
+            // self.execute_loading_status = false
+            if (action == 'execute') { self.execute_loading_status = false } //button置为加载中
+            if (action == 'force') { self.force_loading_status = false } //button置为加载中
+
+            if (response.data.status == 1) {
+
+              if (action == 'execute' || action == 'force') {
+                // self.execute_loading_status = false //button置为正常状态  
+                self.execTable = response.data.result
+                self.get_confirm_info() //重新获取工单数据
+                self.get_the_cluster_exists_file()
+                self.record_id = response.data.result[0].record_id
+
+                console.log(response.data.result[response.data.result.length - 1].errlevel, 'err')
+                if (response.data.result[response.data.result.length - 1].errlevel == null) {
+                  self.get_exec_info(response.data.result[0].record_id) //循环获取数据           
+                }
+              }
+            }
+          })
+
+        }
+
+
+      }
+    },
+    handleCheckAllChange(event) {
+      // 全选sql文件执行与取消
+
+      if (event.target.checked == 1) {
+        this.sqlFileList = this.ruleForm.svnfilelist
+
+      } else {
+        this.sqlFileList = []
+      }
+      this.auto_relation_cluster_and_sqlfile()
+      this.isIndeterminate = false;
+    },
+    handleCheckedCitiesChange(value) {
+      // 当单选sql文件时，自动变化全选状态
+      this.auto_relation_cluster_and_sqlfile()
+      let checkedCount = value.length;
+      this.checkAll = checkedCount === this.ruleForm.svnfilelist.length;
+      this.isIndeterminate = checkedCount > 0 && checkedCount < this.ruleForm.svnfilelist.length;
+    },
+    showsqlFileContent(filename) {
+      //查看单个sql文件状态  
+      var submit_id = this.$route.params.id
+      this.showModalSvnSqlContent = true
+      var self = this
+      var d = {
+        svndirname: this.ruleForm.svndirname,
+        filename: filename,
+      }
+      self.svnSqlContent = ''
+      self.$http.get(ConfirmGetSvnSqlContent, { params: d }).then((response) => {
+        self.svnSqlContent = response.data.result
+      })
+    },
+    get_env_instances() {
+      //环境值变后，获取该环境下的实例列表。  
+      var self = this
+      this.get_the_cluster_exists_file()
+
+      self.$http.get(InstanceListApiUrl, { params: { cluster_id: this.cluster_id } }).then((response) => {
+        for (var n in response.data.result) {
+          response.data.result[n].sqlFileList = []
+        }
+        self.instance_list = response.data.result
+        self.auto_relation_cluster_and_sqlfile()
+      })
+    },
+    get_the_cluster_exists_file() {
+      var exec_file_in_cluster = []
+      var cluster_id = this.cluster_id
+      for (var n in this.ruleForm.passrecords) {
+        var exec = this.ruleForm.passrecords[n]
+        if (exec.cluster_id == cluster_id) {
+          for (var m in exec.exec_filenames) {
+            var exec_file = exec.exec_filenames[m]
+            if (exec_file_in_cluster.indexOf(exec_file) == -1) {
+              exec_file_in_cluster.push(exec_file)
+            }
+          }
+        }
+      }
+      this.exec_file_in_cluster = exec_file_in_cluster
+    },
+    auto_relation_cluster_and_sqlfile() {
+      // 自动把环境下的实例上sql文件关联起来
+      if (this.ruleForm.svntag != 1) {
+        this.ruleForm.svnfilelist = [this.ruleForm.dbname, ]
+        this.sqlFileList = [this.ruleForm.dbname, ]
+        console.log('svntag != 1')
+      }
+
+      this.found_db_sqlfiles = [] //已找到数据库的文件放到这里面。  
+
+      for (var n in this.instance_list) {
+        this.instance_list[n].sqlFileList = []
+        var instance = this.instance_list[n]
+        for (var m in instance.dbs) {
+          var dbname = instance.dbs[m]
+          for (var i in this.SqlExecSelectionVals) {
+            var select_sql_file = this.SqlExecSelectionVals[i].file
+            var select_database = this.SqlExecSelectionVals[i].database
+
+            if (select_database == dbname) {
+              this.instance_list[n].sqlFileList.push(select_sql_file)
+              this.found_db_sqlfiles.push(select_sql_file)
+            }
+          }
+        }
+      }
+
+    },
+    checkbox_valid(row, index) {
+      if (row.database == '') {
+        return false
+      } else if (row.type_length >= 2) {
+        return false
+      } else {
+        return true
+      }
+    },
+    handleSqlExecSelectionChange(val){
+      this.SqlExecSelectionVals = val
+    }
+  },
+  mounted() {
+    this.get_flows()
+    this.get_confirm_info()
+  }
+}
+
+</script>
