@@ -9,5 +9,6 @@ class test:
         print('hello', good)
 
 
-def hello():
-    print(' I love you ...')
+def hello(name=None, args='TEST'):
+    print(' I love you ...', name, args)
+    return 'I love you...'

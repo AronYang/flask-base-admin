@@ -1,5 +1,4 @@
-from app.models.base import Base, SessionMixin
-import sqlalchemy as db
+from app.models.base import db, Base, SessionMixin
 from sqlalchemy.orm import relationship, backref, joinedload
 from passlib.apps import custom_app_context as pwd_context
 import datetime

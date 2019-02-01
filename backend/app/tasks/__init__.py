@@ -1,12 +1,19 @@
 #: coding=utf-8
 #: function: tasks文件，主要用来存放异步任务
+from flask import current_app
 from factory.fac_app import create_app
 from factory.fac_celery import create_celery
 from importlib import import_module
 import inspect
 from app.tasks.inspect_mate import is_attribute, is_class_method, is_property_method, is_regular_method, is_static_method
 from inspect import isfunction, isclass
-celery = create_celery(create_app())
+celery = create_celery(current_app)
+# from app import celery
+
+
+@celery.task()
+def delay(imp_module, *args, **kwargs):
+    run.delay(imp_module, *args, **kwargs)
 
 
 @celery.task()
@@ -15,6 +22,7 @@ def run(imp_module, *args, **kwargs):
     #： imp_first 为文件中的类名或方法名
     #： imp_second 为类中的方法名
     module_list = imp_module.split(':')
+    print('module_list:', imp_module)
     if len(module_list) >= 2:
         imp_first = module_list[0]
         imp_second = module_list[1]

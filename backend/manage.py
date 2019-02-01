@@ -1,23 +1,27 @@
 #!/usr/bin/env python
 # coding=utf-8
 # PYTHON_ARGCOMPLETE_OK
-
+import click
+from flask.cli import FlaskGroup
 from flask_script import Manager, Server
 from flask_script.commands import ShowUrls, Clean, Shell
-from factory.fac_app import create_app
+from factory.fac_app import init_app
 from flask_migrate import Migrate, MigrateCommand
-from sql_config import db_session, Base
+from app.models.base import db, Base
 from flask import abort, jsonify
 from app import tasks
-app = create_app()
+app = init_app()
+print('manage', app.config.__dict__)
+
 manager = Manager(app)
-db = Base()
-migrate = Migrate(app, db)
+db_base = Base()
+migrate = Migrate(app, db_base)
 
 
 @app.shell_context_processor
 def make_shell_context():
     return dict(tasks=tasks)
+
 
 manager.add_command("runservernoreload", Server(use_reloader=False))
 manager.add_command("urls", ShowUrls())
@@ -25,7 +29,23 @@ manager.add_command("clean", Clean())
 manager.add_command('db', MigrateCommand)
 
 # 重写runserver方法，指定默认端口
-manager.add_command('runserver', Server(host='0.0.0.0', port=4001, use_debugger=True))
+# manager.add_command('run', Server(host='0.0.0.0', port=4001))
+
+
+@manager.command
+def run(name='dev'):
+    ''''dev' or 'pro', default running for dev.  
+    '''
+    if name == 'dev':
+        app.run(host=app.config['HOST'], port=app.config['PORT'])
+    elif name == 'pro':
+        pass
+
+# @manager.command('recreate_db', help='Recreates a local database, You probably should not use this on production.')
+# def recreate_db():
+#     db.drop_all()
+#     db.create_all()
+#     db.session.commit()
 
 
 @app.route('/test')
