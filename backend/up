@@ -1,0 +1,152 @@
+#!/bin/bash
+
+function SystemName() {
+    if [ -f /etc/os-release ];then
+            source /etc/os-release
+    else
+        return 
+    fi
+
+    case $ID in
+        centos|fedora|rhel)
+            which pip
+            if [ $? != "0" ]; then
+                wget https://bootstrap.pypa.io/3.3/get-pip.py
+                python get-pip.py
+            fi
+            echo "安装/更新可能缺少的依赖: mysql-community-devel gcc gcc-c++ python-devel"
+            # 安装python-devel报错 yum install yum-utils ,yum clean all  yum -y install python-devel
+            sudo yum install -y yum-utils mariadb-devel mysql-devel --skip-broken gcc gcc-c++ python-devel MySQL-python
+            ;;
+
+        debian|ubuntu|devuan)
+            echo "安装/更新可能缺少的依赖: libmysqld-dev libmysqlclient-dev python-dev python-virtualenv python-pip"
+            sudo apt update -y
+            sudo apt install -y libmysqld-dev libmysqlclient-dev python-dev python-virtualenv python-pip
+            ;;
+
+        raspbian)
+            echo "安装/更新可能缺少的依赖"
+            sudo apt update -y
+            sudo apt install -y gcc g++ python-dev virtualenv python-pip libpq-dev libffi-dev libssl-dev libmariadbd18 libmariadbd-dev
+            ;;
+
+        *)
+            exit 1
+            ;;
+    esac
+}
+
+function requirement() {
+    source ./venv/bin/activate
+    pip install -r ./requirements.txt -i http://pypi.douban.com/simple --trusted-host pypi.douban.com
+}
+
+
+function init() {
+    echo "Initing ..."
+    echo "----------------"
+    SystemName
+
+    pip install virtualenv
+    if [ ! -d "venv" ]; then
+        virtualenv --no-site-packages venv # 注意:安装失败请指定python路径. mac 可能会有用anaconda的python. 请不要mac试用, 麻烦多多
+    fi
+
+    requirement
+    echo "************************************************"
+    echo -e "\033[32m init success \033[0m"
+    echo -e "\033[32m welcome \033[0m"
+}
+
+mkdir -p logs
+export FLASK_APP=manage
+
+function supervisor() {
+    hash supervisord
+    if [ $? -gt 0 ]; then
+        echo "supervisord command not found..."
+        exit 0
+    fi
+
+    supervisord -c ./supervisor.conf
+}
+
+function worker() {
+    source ./venv/bin/activate
+    celery -A app.tasks worker 
+}
+
+function beat() {
+    source ./venv/bin/activate
+    celery -A app.tasks beat >>/tmp/celery.log
+}
+
+function dev() {
+    source ./venv/bin/activate
+    python manage.py runserver
+}
+
+function prod() {
+    source ./venv/bin/activate
+    python manage.py prod
+}
+
+function stop() {
+    source ./venv/bin/activate
+    python manage.py kill
+}
+
+function restart() {
+    stop
+    prod
+}
+
+function shell() {
+    source ./venv/bin/activate
+    python manage.py shell
+}
+
+function clean() {
+    # find ./ -name "*.pyc" -o -name "__pycache__" -exec rm -rf {} \; >> /dev/null 2>&1
+    source ./venv/bin/activate
+    python manage.py clean
+}
+
+function notice() {
+    echo "$0 init|dev|prod|stop|restart|clean|shell|worker|beat|supervisor|db_upgrade"
+}
+
+function db_upgrade(){
+    export FLASK_APP=manage
+    source ./venv/bin/activate
+    python manage.py db upgrade
+}
+
+if [ "$1" == "" ]; then
+    notice
+elif [ "$1" == "init" ];then
+    init
+elif [ "$1" == "dev" ];then
+    dev
+elif [ "$1" == "stop" ];then
+    stop
+elif [ "$1" == "prod" ];then
+    prod
+elif [ "$1" == "clean" ];then
+    clean
+elif [ "$1" == "restart" ];then
+    restart
+elif [ "$1" == "shell" ];then
+    shell
+elif [ "$1" == "worker" ];then
+    worker
+elif [ "$1" == "beat" ];then
+    scheduler
+elif [ "$1" == "supervisor" ];then
+    supervisor
+elif [ "$1" == "db_upgrade" ]; then
+    db_upgrade
+else
+    notice
+fi

@@ -1,10 +1,10 @@
-from app.models.base import db, Base, SessionMixin
+from app.models.base import db, SessionMixin
 from sqlalchemy.orm import relationship, backref, joinedload
 from passlib.apps import custom_app_context as pwd_context
 import datetime
 
 
-class User(Base, SessionMixin):
+class User(db.Model, SessionMixin):
     __tablename__ = 'u_users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True)  # 用户名
@@ -14,7 +14,7 @@ class User(Base, SessionMixin):
     mail = db.Column(db.String(64))  # 邮箱
     city = db.Column(db.String(64))  # 城市
     pwd = db.Column(db.String(512))  # 密码，采用sha256加密
-    group_id = db.Column(db.Integer, db.ForeignKey('u_groups.id'))
+    group_id = db.Column(db.Integer)
 
     create_time = db.Column(db.DateTime, default=datetime.datetime.now,)  # 创建时间
     update_time = db.Column(db.DateTime, default=datetime.datetime.now, onupdate=datetime.datetime.now)  # 更新时间

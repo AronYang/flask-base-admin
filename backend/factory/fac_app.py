@@ -1,64 +1,72 @@
 # coding=utf-8
 
 from flask import Flask, jsonify, current_app, request
+import conf
 import os
-from conf import Config
 from flask_cache import Cache
-from flask_apscheduler import APScheduler
-from apscheduler.jobstores.redis import RedisJobStore
-from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
-from apscheduler.schedulers.background import BackgroundScheduler
 import logging
-from app.views import router
+from app import api
 from werkzeug.exceptions import HTTPException, default_exceptions, InternalServerError
+from flask_sqlalchemy import SQLAlchemy
+from app.models.base import db
+from flask_migrate import Migrate
 
 
-def create_app():
-    app = Flask(__name__,)
-    # app.logger.setLevel(logging.ERROR)
-    app.secret_key = 'hello, morning.'
-    app.config.from_object(Config)
-    return app
+def init_database(app):
+    db.init_app(app)
+    db.app = app
+    Migrate(app, db)
 
 
-def error_handler(error):
-    if not isinstance(error, HTTPException):
-        error = InternalServerError()
-    current_app.logger.error(f"'error {error.code}: [{str(error.description)}:{request.url}]'")
-
-    if isinstance(error.description, dict):
-        return error.description, error.code
-
-    return jsonify({"msg": error.description, "status": False}), error.code
-
-
-def log_handler(app):
-    # 日志系统配置
-    logfile = app.config['LOG_FILE']
-    handler = logging.FileHandler(f'{logfile}', encoding='UTF-8')
+def init_logger(app):
+    #: 初始化日志
+    log_path = os.path.join(app.config['LOG_DIR'], 'app.log')
+    handler = logging.FileHandler(log_path, encoding='UTF-8')
     logging_format = logging.Formatter(
         '%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)s - %(message)s')
     handler.setFormatter(logging_format)
-    return handler
+    app.logger.addHandler(handler)
+    if app.debug:
+        app.logger.setLevel(logging.debug)
+    else:
+        app.logger.setLevel(logging.ERROR)
 
 
-def init_app():
-    from app.crontab import crontab
+def init_config(app):
+    app.config.from_object(conf)
+    if not app.config.get('LOG_DIR'):
+        app.config['LOG_DIR'] = app.root_path
 
-    app = create_app()
 
-    print(app.config)
+def init_route(app):
+    app.register_blueprint(api.router, url_prefix='/api')
 
-    app.logger.addHandler(log_handler(app))
+
+def init_cache(app):
     app.cache = Cache(app)
-    app.register_blueprint(router, url_prefix='/api')
+
+
+def init_error(app):
+
+    def error_handler(error):
+        if not isinstance(error, HTTPException):
+            error = InternalServerError()
+        app.logger.error(f"'error {error.code}: [{str(error.description)}:{request.url}]'")
+
+        if isinstance(error.description, dict):
+            return error.description, error.code
+
+        return jsonify({"msg": error.description, "status": False}), error.code
 
     for code in default_exceptions:
         app.register_error_handler(code, error_handler)
 
-    if app.debug or os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
-        scheduler = APScheduler()
-        scheduler.init_app(app)
-        crontab(app)
-        scheduler.start()
+
+def create_app():
+    app = Flask(__name__,)
+    init_config(app)
+    init_database(app)
+    init_logger(app)
+    init_route(app)
+    init_error(app)
     return app

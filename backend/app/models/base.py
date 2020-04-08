@@ -1,24 +1,8 @@
 # coding=utf-8
-import sqlalchemy as db
-# from sqlalchemy import create_engine
 import datetime
-from sqlalchemy.orm import scoped_session, sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
 from flask import abort
-from conf import Config
-
-# db connect engine
-engine = db.create_engine('mysql://%s:%s@%s:%s/%s?charset=utf8' % (
-    Config.DB_USER, Config.DB_PASSWD, Config.DB_HOST,
-    Config.DB_PORT, Config.DB_NAME), pool_recycle=30,
-    pool_size=500, max_overflow=0)
-
-db.session = scoped_session(sessionmaker(autocommit=False,
-                                         autoflush=False,
-                                         bind=engine))
-Base = declarative_base()
-
-Base.query = db.session.query_property()  # 指定model查询调用的会话
+from flask_sqlalchemy import SQLAlchemy
+db = SQLAlchemy()
 
 
 class SessionMixin(object):
@@ -36,7 +20,7 @@ class SessionMixin(object):
 
     @classmethod
     def add(cls, data):
-        ''' 添加数据  
+        ''' 添加数据
         '''
         a = cls(**data)
         db.session.add(a)
@@ -49,20 +33,23 @@ class SessionMixin(object):
         db.session.commit()
         return self
 
-    @classmethod
-    def delete(cls, _id):
-        data = cls.query.filter_by(id=_id).first()
-        db.session.delete(data)
+    def delete(self):
+        """
+        delete model
+        """
+        db.session.delete(self)
         db.session.commit()
+        return self
 
     @classmethod
     def update(cls, _id, data):
-        d = cls.query.get(_id)
+        item = cls.query.get(_id)
+        if not item:
+            abort(404)
         for k, v in data.items():
             setattr(d, k, v)
-        db.session.add(d)
-        db.session.commit()
-        return d
+        item.save()
+        return item
 
     @classmethod
     def get_all(cls, query=None, get_query=False, operator="==", **params):
