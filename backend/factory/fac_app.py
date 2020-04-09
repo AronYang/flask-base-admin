@@ -25,11 +25,11 @@ def init_logger(app):
     logging_format = logging.Formatter(
         '%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)s - %(message)s')
     handler.setFormatter(logging_format)
-    app.logger.addHandler(handler)
     if app.debug:
-        app.logger.setLevel(logging.debug)
+        handler.setLevel(logging.DEBUG)
     else:
-        app.logger.setLevel(logging.ERROR)
+        handler.setLevel(logging.ERROR)
+    app.logger.addHandler(handler)
 
 
 def init_config(app):

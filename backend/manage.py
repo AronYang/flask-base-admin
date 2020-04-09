@@ -2,8 +2,8 @@
 # coding=utf-8
 # PYTHON_ARGCOMPLETE_OK
 import warnings
-from flask.exthook import ExtDeprecationWarning
-warnings.simplefilter('ignore', ExtDeprecationWarning)
+# from flask.exthook import ExtDeprecationWarning
+# warnings.simplefilter('ignore', ExtDeprecationWarning)
 import os
 from glob import glob
 from flask_script import Manager, Server
@@ -22,10 +22,9 @@ pidfile_path = os.path.join(app.root_path, os.pardir, '.'.join([app.config['NAME
 @app.shell_context_processor
 def make_shell_context():
     model_list = [
-        tasks,
         models.users.user.User,
     ]
-    model_dict = {}
+    model_dict = {'tasks': tasks, }
     for model_obj in model_list:
         model_dict[model_obj.__name__] = model_obj
 

@@ -76,8 +76,8 @@ class Inspect:
         assert getattr(klass, attr) == value
 
         if inspect.isroutine(value):
-            if not is_static_method(klass, attr, value) \
-                    and not is_class_method(klass, attr, value):
+            if not Inspect.is_static_method(klass, attr, value) \
+                    and not Inspect.is_class_method(klass, attr, value):
                 return True
 
         return False
@@ -132,7 +132,7 @@ class Inspect:
 
 
 @celery.task(bind=True)
-def run(self, imp_module, *args, **kwargs):
+def run(self, filename, method, *args, **kwargs):
     #: imp_first tasks下的文件名称
     #： imp_first 为文件中的类名或方法名
     #： imp_second 为类中的方法名
@@ -141,7 +141,8 @@ def run(self, imp_module, *args, **kwargs):
         print(f'Receive task: {imp_module}')
         print('Executing task id {0.id}, args: {0.args!r} kwargs: {0.kwargs!r}'.format(
             self.request))
-    module_list = imp_module.split('.')
+    # module_list = imp_module.split('.')
+    module_list = [filename, filename.capitalize(), method]
     if len(module_list) >= 2:
         imp_first = module_list[0]
         imp_second = module_list[1]

@@ -1,9 +1,9 @@
 
-__all__ = ['test']
+__all__ = ['Test']
 from app.common.log import Log
 
 
-class test:
+class Test:
     NGINX = '123456'
 
     def hello(self, good):

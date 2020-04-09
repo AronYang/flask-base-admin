@@ -1,4 +1,4 @@
-Flask==0.12.2 
+Flask==1.1.2
 Flask-SQLAlchemy==2.3.2
 Flask-HTTPAuth==3.2.3
 Flask-Script==2.0.6
@@ -8,12 +8,12 @@ Flask-RESTful==0.3.6
 SQLAlchemy==1.1.15
 pymysql==0.8.0 
 passlib==1.7.1
-redis==2.10.6
-celery ==4.1.1
+redis==3.4.1
+celery ==4.4
 uwsgi==2.0.15
 chardet==3.0.4 
 ansible==2.2.0
-
+werkzeug==0.15
 
 # Lint and code style
 flake8==3.7.9
