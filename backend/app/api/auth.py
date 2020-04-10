@@ -1,11 +1,13 @@
 # coding=utf8
 
-from passlib.apps import custom_app_context as pwd_context
-from app.models.users.user import User
-from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
-from flask import g, jsonify, Response, current_app, Blueprint
+from flask import Blueprint, Response, current_app, g, jsonify
 from flask_httpauth import HTTPBasicAuth
-from flask_restful import Resource, Api, reqparse
+from flask_restful import Api, Resource, reqparse
+from itsdangerous import BadSignature, SignatureExpired
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from passlib.apps import custom_app_context as pwd_context
+
+from app.models.users.user import User
 
 login = HTTPBasicAuth()
 secret_key = 'aron'

@@ -1,7 +1,9 @@
 # coding=utf-8
 import datetime
+
 from flask import abort
 from flask_sqlalchemy import SQLAlchemy
+
 db = SQLAlchemy()
 
 

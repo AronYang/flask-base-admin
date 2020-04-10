@@ -3,22 +3,21 @@
 # 企业微信接口
 
 import string
-
-from aip import AipSpeech
-from pypinyin import lazy_pinyin
-from passlib.hash import ldap_salted_sha1 as lsa
-
-from random import choice, choices
 from copy import deepcopy
 from datetime import datetime
-from app import current_app, cache
-from app.common.log import Log
+from random import choice, choices
+
+from passlib.hash import ldap_salted_sha1 as lsa
+
+from aip import AipSpeech
+from app import cache, current_app
 from app.common.http import request
-from app.tasks import InvalidConfigError, InvalidFnError, BaseTask
 from app.common.ldap import LdapClient
+from app.common.log import Log
 from app.models.issue_report import IssueReport
 from app.models.workorder_ticket import WorkorderTicket
-
+from app.tasks import BaseTask, InvalidConfigError, InvalidFnError
+from pypinyin import lazy_pinyin
 
 #: Cache Type -> str
 TOKEN_CACHE_KEY = "WECHAT_ACCESS_TOKEN"

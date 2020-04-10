@@ -1,15 +1,16 @@
 # -*- coding:utf-8 -*-
 # Author:      LiuSha
 import base64
-import string
-import random
 import hashlib
-import time
+import random
+import socket
+import string
 import struct
-from Crypto.Cipher import AES
+import time
 import xml.etree.cElementTree as ElementTree
 from xml.etree.cElementTree import Element
-import socket
+
+from Crypto.Cipher import AES
 
 
 class CryptSuccess(object):

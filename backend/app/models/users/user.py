@@ -1,7 +1,9 @@
-from app.models.base import db, SessionMixin
-from sqlalchemy.orm import relationship, backref, joinedload
-from passlib.apps import custom_app_context as pwd_context
 import datetime
+
+from passlib.apps import custom_app_context as pwd_context
+from sqlalchemy.orm import backref, joinedload, relationship
+
+from app.models.base import SessionMixin, db
 
 
 class User(db.Model, SessionMixin):

@@ -1,8 +1,10 @@
 # coding=utf-8
-from celery import Celery
-from factory.fac_app import create_app
-from conf import CELERY_BROKER_URL, CELERY_RESULT_BACKEND
 from celery import platforms  # 如果你不是linux的root用户，这两行没必要
+from celery import Celery
+
+from conf import CELERY_BROKER_URL, CELERY_RESULT_BACKEND
+from factory.fac_app import create_app
+
 platforms.C_FORCE_ROOT = True  # 允许root权限运行celery
 
 

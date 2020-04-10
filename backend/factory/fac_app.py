@@ -1,15 +1,18 @@
 # coding=utf-8
 
-from flask import Flask, jsonify, current_app, request
-import conf
-import os
-from flask_cache import Cache
 import logging
-from app import api
-from werkzeug.exceptions import HTTPException, default_exceptions, InternalServerError
-from flask_sqlalchemy import SQLAlchemy
-from app.models.base import db
+import os
+
+from flask import Flask, current_app, jsonify, request
+from flask_cache import Cache
 from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.exceptions import (HTTPException, InternalServerError,
+                                 default_exceptions)
+
+import conf
+from app import api
+from app.models.base import db
 
 
 def init_database(app):

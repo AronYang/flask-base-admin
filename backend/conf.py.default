@@ -1,22 +1,29 @@
 # coding=utf-8
 
 # mysql config
-db_user = "aaron"
-db_passwd = "Yy@123456"
+db_user = "xxxxxxxx"
+db_passwd = "xxxxxxxx"
 db_port = "3306"
-db_name = "satop"
-db_host = "yy.4it.cn"
+db_name = "xxx"
+db_host = "xxxxxx"
 
 # redis config
-redis_ip = 'yy.4it.cn'
-redis_port = 16666
+redis_ip = 'xxxxxx'
+redis_port = xxxx
+
+
+LOG_DIR = '/tmp'  # default app root dir
 
 # celery config
 CELERY_BROKER_URL = 'redis://%s:%s/10' % (redis_ip, redis_port)
 CELERY_RESULT_BACKEND = 'redis://%s:%s/11' % (redis_ip, redis_port)
 CELERY_IMPORTS = ('app.tasks',)
 
-SQLALCHEMY_DATABASE_URI = 'mysql://%s:%s@%s:%s/%s' % (db_user, db_passwd, db_host, db_port, db_name)
+SQLALCHEMY_DATABASE_URI = 'mysql://%s:%s@%s:%s/%s' % (db_user,
+                                                      db_passwd,
+                                                      db_host,
+                                                      db_port,
+                                                      db_name)
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 # flask cache config
@@ -25,3 +32,12 @@ CACHE_TYPE = 'simple'
 # super admin config
 admin_user = 'admin'
 admin_pwd = '123456'
+
+NAME = 'oops'
+DEBUG = False
+HOST = '0.0.0.0'
+PORT = 4001
+WORKS = 8
+SECRET_KEY = '68ee8d14dac7cf2e73da1a2855e10695'
+ACCESS_LOG = ''
+ERROR_LOG = ''

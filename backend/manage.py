@@ -1,19 +1,21 @@
 #!/usr/bin/env python
 # coding=utf-8
 # PYTHON_ARGCOMPLETE_OK
-import warnings
 # from flask.exthook import ExtDeprecationWarning
 # warnings.simplefilter('ignore', ExtDeprecationWarning)
 import os
-from glob import glob
-from flask_script import Manager, Server
-from flask_script.commands import ShowUrls, Clean, Shell
-from factory.fac_app import create_app
-from flask_migrate import MigrateCommand
-from flask import abort, jsonify
 import subprocess
-from app import tasks
-from app import models
+import warnings
+from glob import glob
+
+from flask import abort, jsonify
+from flask_migrate import MigrateCommand
+from flask_script import Manager, Server
+from flask_script.commands import Clean, Shell, ShowUrls
+
+from app import models, tasks
+from factory.fac_app import create_app
+
 app = create_app()
 manager = Manager(app)
 pidfile_path = os.path.join(app.root_path, os.pardir, '.'.join([app.config['NAME'], "pid"]))
@@ -89,6 +91,7 @@ def prod():
             port=app.config["PORT"],
         )
     ])
+    print(cmd)
     os.system(cmd)
 
 
@@ -119,6 +122,7 @@ def lint(fix_imports=False):
             exit(rv)
 
     if fix_imports:
+        #: is sort 是使import 更加美化的包
         execute_tool('Fixing import order', 'isort', '-rc')
     execute_tool('Checking code style', 'flake8')
 
