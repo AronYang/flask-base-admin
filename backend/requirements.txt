@@ -14,7 +14,7 @@ redis==3.4.1
 celery ==4.4
 chardet==3.0.4 
 ansible==2.2.0
-werkzeug==0.15
+werkzeug==0.15.3
 
 # Lint and code style
 flake8==3.7.9
