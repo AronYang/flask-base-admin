@@ -142,7 +142,7 @@ elif [ "$1" == "shell" ];then
 elif [ "$1" == "worker" ];then
     worker
 elif [ "$1" == "beat" ];then
-    scheduler
+    beat
 elif [ "$1" == "supervisor" ];then
     supervisor
 elif [ "$1" == "db_upgrade" ]; then
