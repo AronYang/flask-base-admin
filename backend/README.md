@@ -21,5 +21,13 @@
 5. 运行celery beat  
 >./up beat
 
+6. 数据库表结构初始化  
+> python manage.py db migrate    
+python manage.py db upgrade  
 
-
+7. tasks目录规范  
+> tasks下的文件，命名方式文件名如cron,文件内的class名称为Cron。
+调用方法:  
+> ./up shell  
+> tasks.run('test','hello')  #同步调用tasks下的test文件中的Test类中的hello方法
+>tasks.run.delay('test','hello') #异步调用，等待worker执行  
