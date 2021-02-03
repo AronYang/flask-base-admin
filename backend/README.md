@@ -15,11 +15,11 @@
 >./up restart #：生产环境  
 ./up dev  #:开发环境  
 
-4. 运行celery worker
-./up worker  
+4. 运行celery worker  
+>./up worker  
 
-5. 运行celery beat
-./up beat
+5. 运行celery beat  
+>./up beat
 
 
 
