@@ -12,8 +12,8 @@
 > 持贝conf.py.default为conf.py, 自行相关db配置
 
 3. 启动服务
->./up restart #：生产环境
-./up dev  #:开发环境
+>./up restart #：生产环境  
+./up dev  #:开发环境  
 
 4. 运行celery worker
 ./up worker  
