@@ -11,7 +11,7 @@ gevent==1.4.0
 pymysql==0.8.0 
 passlib==1.7.1
 redis==3.4.1
-celery ==4.4
+celery ==5.2.2
 chardet==3.0.4 
 ansible==2.2.0
 werkzeug==0.15
