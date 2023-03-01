@@ -9,7 +9,7 @@ db_host = "xxxxxx"
 
 # redis config
 redis_ip = 'xxxxxx'
-redis_port = xxxx
+redis_port = 'xxxx'
 
 
 LOG_DIR = '/tmp'  # default app root dir
